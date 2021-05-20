@@ -1,0 +1,150 @@
+Capstone Project on “Churn at Mobicom”:
+MobiCom is concern about the market environment of rising customer churn and declining ARPU as churn rate at MobiCom is High. Analyzed the factors influencing the churn behaviour and created a Dashboard on
+validation of data usage connectivity issues for Mobicom. Given data has 81 features and 66297 records, each describes overall usage of customer, demographic information and subscription status in feature churn.
+
+Analyzed the telecom churn rate data provided by Jigsaw Learning Center and built a logistic regression model using backward selection of variable and validation of model and its assumptions. Predicted churn rate for each customer and target segment of
+customers for proactive retention strategy.
+
+Technique Used: R, Logistic Regression, Descriptive Statistics, Variable profiling and ggplot2
+
+Business Questions:
+#1. What are the top five factors driving likelihood of churn at Mobicom?
+head(sort(abs(mod5$coefficients),decreasing = T),10)
+summary(mod5)
+#Factor                  coefficient
+#1.retdays_n1             0.6574813
+#2.asl_flag_n_Group2      0.4734461
+#3.hnd_price_n_Group3     0.4164027
+#4.area_n_Group3          0.3644660
+#5.hnd_price_n_Group2     0.2708792
+
+#Special offers should be given to customers who makes retention calls 
+#Special plans should be rolled out for customers located in NORTHWEST/ROCKY MOUNTAIN AREA
+#and SOUTH FLORIDA AREA
+
+#2. Validation of survey findings
+#a) Whether "cost and billing" and "network and service quality" are important factors
+#influencing churn behaviour?
+#Variables affects cost and billing are
+------------------------------------------
+#1. totmrc_Mean - Monthly Recurring Charge is the base cost of the calling plan regardless of actual minutes used.
+#2. rev_range - Range of revenue (charge amount)
+#3. ovrrev_Mean - DATOVR_MEAN + VCEOVR_MEAN.Mean overage revenue is the sum of data and voice overage revenues.
+#4. totrev-Total revenue
+  
+#Beta Coefficients
+mod5$coefficients
+#totmrc_Mean :(-)0.0063960681 
+#rev_range   :0.0019711383
+#ovrrev_Mean :0.0066317704
+#totrev      :0.0002317941 
+
+#Above beta values shows that unit increase of those variables has no impact on the 
+#churn. So cost and billing is not an important factor influencing churn behaviour
+
+#Variables affects network and service quality are
+#1. mou_Range -Range of number of minutes of use
+#2. change_mou -Percentage change in monthly minutes of use vs previous three month average
+#3. drop_blk_Mean - Mean number of dropped or blocked calls
+#4. drop_vce_Range- Range of number of dropped (failed) voice calls
+#5. mou_opkv_Range - Range of unrounded minutes of use of off-peak voice calls
+#6. iwylis_vce_Mean - Mean number of inbound wireless to wireless voice calls
+#7. avgqty - Average monthly number of calls over the life of the customer
+#8. avg6mou - Average monthly minutes of use over the previous six months
+#9. adjmou - Billing adjusted total minutes of use over the life of the customer
+#10. retdays_n - Number of days since last retention call
+#11. complete_Mean - COMP_DAT_MEAN + COMP_VCE_MEAN. Mean number of completed calls.
+
+#Beta Coefficients
+mod5$coefficients
+#mou_Range         :0.0002562910 
+#change_mou        :(-)0.0006289187
+#drop_blk_Mean     :0.0071641598
+#drop_vce_Range    :0.0180034620 
+#mou_opkv_Range    :(-)0.0011672176
+#iwylis_vce_Mean   :(-)0.0126706556
+#avgqty            :0.0008278967
+#retdays_n         :0.6574813402
+#complete_Mean     :(-)0.0020419077
+
+#Above values shows that retdays_n is an important factor influencing the churn behaviour. 
+#As the number of days increases after the customer making the retention call, chances of churning is high.
+#Special attention has to be given for those customers by providing special offers
+
+
+#2b. Are the data usage connectivity issues turning out to be costly?In other words, is it leading to churn?
+# Varaibles related to data usage connectivity are
+#1. comp_dat_Mean :Mean number of completed data calls
+#2. plcd_dat_Mean :Mean number of attempted data calls placed
+#3. opk_dat_Mean  :Mean number of off-peak data calls
+#4. blck_dat_Mean :Mean number of blocked (failed) data calls
+#5. datovr_Mean   :Mean revenue of data overage
+#6. datovr_Range  :Range of revenue of data overage
+#7. drop_dat_Mean :Mean number of dropped (failed) data calls
+
+quantile(d$plcd_dat_Mean,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.85,0.90,1))
+#Only 10 to 15% of the customers making the data calls 
+#Work towards achiving more customers to use internet and provide quality data connectivity to reduce the churn
+#There is no enough usable data for those variables to show the impact on churn
+
+
+#3. Would your recommend rate plan migration as a proactive retention strategy?
+#OVERREV_MEAN = DATOVR_MEAN + VCEOVR_MEAN - Mean overage revenue is the sum of data and voice overage revenues.
+#Beta coefficient of ovrrev_Mean is 0.0066317704. The impact of this variable is less on the churn behaviour
+#This may be the concern for individual customers but overall migration plan might not help much.
+
+
+#4. What would be your recommendation on how to use this churn model for prioritisation
+# of customers for a proactive retention compaigns in the future?
+gains(test$churn,predict(mod5,type="response",newdata=test),groups=10)
+#From this chart we understand that top 20% of the probabilites contain 29.2% customers that are likely to churn 
+
+#customers with high churn rate
+test$prob<-predict(mod5,type="response",newdata=test)
+quantile(test$prob,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1))
+#Top 20%lies between 0.3411187  and 0.7532860
+
+#Applying cutoff to predict the churn
+pred4<-predict(mod5,type="response",newdata=test)
+pred4<-ifelse(pred4>0.3411187,1,0)
+table(pred4,test$churn)
+
+Targeted<-test[test$prob>0.3411187&test$prob<=0.7532860&test$churn=="1","Customer_ID"]
+Targeted<-as.data.frame(Targeted)
+nrow(Targeted)
+
+write.csv(Targeted,"Targeted_customers",row.names=F)
+#Extract the target list using customer ID.
+
+#5. What would be the target segments for proactive retention compaigns?
+#Mobicom would like to save their high revenue customers besides manging churn
+#Given a budget constraint of a contact list of 20% of subscriber pool which
+#subscribers should prioritised if "revenue saves" is also a priority besides
+#controlling churn
+#controlling churn is the primary objective and revenue saves is the secondary objective
+pred5<-predict(mod5,type="response",newdata=test)
+test$prob<-predict(mod5,type="response",newdata=test)
+quantile(test$prob,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1))
+pred6<-ifelse(pred5<0.20,"Low_score",ifelse(pred5>=0.20&pred5<0.30,"Medium_score","High_score"))
+table(pred6,test$churn)
+
+str(test$totrev)
+summary(test$totrev)
+quantile(test$totrev,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1))
+Revenue<-ifelse(test$totrev<670.66,"Low_revenue",ifelse(test$totrev>=670.66&test$totrev<1034.281,"Medium_Revenue","High_Revenue"))
+table(Revenue)
+table(pred6,Revenue)
+
+test$prob_levels<-ifelse(pred5<0.20,"Low_score",ifelse(pred5>=0.20&pred5<0.30,"Medium_score","High_score"))
+test$Revenue_levels<-ifelse(test$totrev<670.66,"Low_revenue",ifelse(test$totrev>=670.66&test$totrev<1034.281,"Medium_Revenue","High_Revenue"))
+table(test$prob_levels,test$Revenue_levels)
+#This table can be used to select the level of customers are to be targeted
+#Target list can be extracted as follows
+
+Targeted1<-test[(test$prob_levels=="High_score"&test$Revenue_levels=="High_Revenue")|
+                (test$prob_levels=="High_score"&test$Revenue_levels=="Medium_Revenue")|
+                  (test$prob_levels=="Medium_score"&test$Revenue_levels=="High_Revenue"),"Customer_ID"]
+Targeted1<-as.data.frame(Targeted1)
+nrow(Targeted1)
+write.csv(Targeted1,"High_Revenue_Target_Customers.csv",row.names = F)
+
